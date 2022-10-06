@@ -1,6 +1,6 @@
-// LearnOpenGL.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
+/*
+    Learn Open GL: Going through the tutorial to refresh my knowledge.
+*/
 #include <iostream>
 // The glad header must go before glfw to avoid errors
 #include <glad/glad.h> 
@@ -39,11 +39,18 @@ int loadGLAD()
     return 0;
 }
 
+void setDimensionsOfRenderingWindow(int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
 int main()
 {
     std::cout << "Hello Learn OpenGL!\n";
+    int width = 800;
+    int height = 600;
     instantiateGLFWWindow();
-    int windowStatus = createGLFWWindow(800, 600, "OpenGL Window");
+    int windowStatus = createGLFWWindow(width, height, "OpenGL Window");
     if (windowStatus == -1)
     {
         return -1;
@@ -53,5 +60,6 @@ int main()
     {
         return -1;
     }
+    setDimensionsOfRenderingWindow(width, height);
 
 }
