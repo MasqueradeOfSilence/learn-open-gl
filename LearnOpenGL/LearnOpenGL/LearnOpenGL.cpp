@@ -8,6 +8,12 @@
 #include <string>
 using namespace std;
 
+struct Window
+{
+    GLFWwindow* window;
+    int status;
+};
+
 void instantiateGLFWWindow()
 {
     glfwInit();
@@ -16,17 +22,19 @@ void instantiateGLFWWindow()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 }
 
-int createGLFWWindow(int width, int height, string title)
+Window createGLFWWindow(int width, int height, string title)
 {
     GLFWwindow* window = glfwCreateWindow(width, height, title.c_str(), NULL, NULL);
     if (window == NULL)
     {
         cout << "Error! Failed to create GLFW window!" << endl;
         glfwTerminate();
-        return -1;
+        Window errorWindow = { NULL, -1 };
+        return errorWindow;
     }
     glfwMakeContextCurrent(window);
-    return 0;
+    Window successWindow = { window, 0 };
+    return successWindow;
 }
 
 int loadGLAD()
@@ -44,14 +52,64 @@ void setDimensionsOfRenderingWindow(int width, int height)
     glViewport(0, 0, width, height);
 }
 
+/*
+*   Adjusts the viewport when we resize the OpenGL window. 
+*/
+void framebufferSizeCallback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+void setUpAutomaticViewportAdjustment(GLFWwindow* window)
+{
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+}
+
+void renderBlueGreenWindow()
+{
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void executeRenderCommands()
+{
+    renderBlueGreenWindow();
+}
+
+void processInput(GLFWwindow* window)
+{
+    // If ESC is hit, close the window.
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        glfwSetWindowShouldClose(window, true);
+    }
+}
+
+void runRenderLoop(GLFWwindow* window)
+{
+    while (!glfwWindowShouldClose(window))
+    {
+        processInput(window);
+        executeRenderCommands();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+}
+
+int closeWindow()
+{
+    glfwTerminate();
+    return 0;
+}
+
 int main()
 {
-    std::cout << "Hello Learn OpenGL!\n";
+    cout << "Hello Learn OpenGL!\n";
     int width = 800;
     int height = 600;
     instantiateGLFWWindow();
-    int windowStatus = createGLFWWindow(width, height, "OpenGL Window");
-    if (windowStatus == -1)
+    Window window = createGLFWWindow(width, height, "OpenGL Window");
+    if (window.status == -1)
     {
         return -1;
     }
@@ -61,5 +119,7 @@ int main()
         return -1;
     }
     setDimensionsOfRenderingWindow(width, height);
-
+    setUpAutomaticViewportAdjustment(window.window);
+    runRenderLoop(window.window);
+    closeWindow();
 }
