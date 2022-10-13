@@ -134,6 +134,18 @@ unsigned int buildFragmentShader()
     return fragmentShader;
 }
 
+void checkForShaderLinkingErrors(unsigned int shaderProgram)
+{
+    int success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        cout << "Error: Linking shaders failed!\n" << infoLog << endl;
+    }
+}
+
 // Links all the shaders together
 unsigned int buildShaderProgram(unsigned int vertexShader, unsigned int fragmentShader)
 {
@@ -142,7 +154,8 @@ unsigned int buildShaderProgram(unsigned int vertexShader, unsigned int fragment
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
-    // next: work on error checking
+    checkForShaderLinkingErrors(shaderProgram);
+    return shaderProgram;
 }
 
 void renderTriangle()
@@ -158,6 +171,10 @@ void renderTriangle()
     unsigned int vertexShader = buildVertexShader();
     unsigned int fragmentShader = buildFragmentShader();
     unsigned int shaderProgram = buildShaderProgram(vertexShader, fragmentShader);
+    glUseProgram(shaderProgram);
+    // We don't need the original shaders after linking them
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
 }
 
 void executeRenderCommands()
