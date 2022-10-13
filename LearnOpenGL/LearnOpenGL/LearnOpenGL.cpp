@@ -22,6 +22,13 @@ const char* vertexShaderSource = "#version 330 core\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
 
+const char* fragmentShaderSource = "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "}\0";
+
 void instantiateGLFWWindow()
 {
     glfwInit();
@@ -117,6 +124,27 @@ unsigned int buildVertexShader()
     return vertexShader;
 }
 
+// Calculates the color output of the pixels. 
+unsigned int buildFragmentShader()
+{
+    unsigned int fragmentShader;
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    return fragmentShader;
+}
+
+// Links all the shaders together
+unsigned int buildShaderProgram(unsigned int vertexShader, unsigned int fragmentShader)
+{
+    unsigned int shaderProgram;
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    // next: work on error checking
+}
+
 void renderTriangle()
 {
     // Defining a 2D triangle with z-coordinates of 0.
@@ -128,6 +156,8 @@ void renderTriangle()
     };
     unsigned int vertexBufferObject = createVertexBufferObject(triangleVertices);
     unsigned int vertexShader = buildVertexShader();
+    unsigned int fragmentShader = buildFragmentShader();
+    unsigned int shaderProgram = buildShaderProgram(vertexShader, fragmentShader);
 }
 
 void executeRenderCommands()
