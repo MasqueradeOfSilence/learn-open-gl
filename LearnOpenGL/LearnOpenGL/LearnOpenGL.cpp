@@ -16,7 +16,7 @@ struct Window
 
 // Triangle vertex shader
 const char* vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 apos;\n"
+    "layout (location = 0) in vec3 aPos;\n"
     "void main()\n"
     "{\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
@@ -27,7 +27,7 @@ const char* fragmentShaderSource = "#version 330 core\n"
     "void main()\n"
     "{\n"
     "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\0";
+    "}\n\0";
 
 void instantiateGLFWWindow()
 {
@@ -86,22 +86,19 @@ void renderBlueGreenWindow()
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-/*
-* Vertex buffer objects are an efficient way of sending large amounts of vertices to the GPU.
-*/
-unsigned int createVertexBufferObject(float triangleVertices[])
+void checkForCompileTimeErrorsFragment(unsigned int fragmentShader)
 {
-    // Defining our buffer
-    unsigned int vertexBufferObject;
-    glGenBuffers(1, &vertexBufferObject);
-    // Giving the buffer a type (array for the triangle vertices)
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-    // Actually inserting the vertices into the buffer
-    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-    return vertexBufferObject;
+    int success;
+    char infoLog[512];
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        cout << "Error: Building fragment shader failed!\n" << infoLog << endl;
+    }
 }
 
-void checkForCompileTimeErrors(unsigned int vertexShader)
+void checkForCompileTimeErrorsVertex(unsigned int vertexShader)
 {
     int success;
     char infoLog[512];
@@ -120,7 +117,7 @@ unsigned int buildVertexShader()
     // Attach the shader code to the shader object and compile it
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
-    checkForCompileTimeErrors(vertexShader);
+    checkForCompileTimeErrorsVertex(vertexShader);
     return vertexShader;
 }
 
@@ -131,6 +128,7 @@ unsigned int buildFragmentShader()
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
+    checkForCompileTimeErrorsFragment(fragmentShader);
     return fragmentShader;
 }
 
@@ -155,32 +153,22 @@ unsigned int buildShaderProgram(unsigned int vertexShader, unsigned int fragment
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
     checkForShaderLinkingErrors(shaderProgram);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     return shaderProgram;
 }
 
-void renderTriangle()
+void renderTriangle(unsigned int vertexBufferObject, unsigned int vertexArrayObject, unsigned int shaderProgram = NULL)
 {
-    // Defining a 2D triangle with z-coordinates of 0.
-    float triangleVertices[] =
-    {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.0f,  0.5f, 0.0f
-    };
-    unsigned int vertexBufferObject = createVertexBufferObject(triangleVertices);
-    unsigned int vertexShader = buildVertexShader();
-    unsigned int fragmentShader = buildFragmentShader();
-    unsigned int shaderProgram = buildShaderProgram(vertexShader, fragmentShader);
     glUseProgram(shaderProgram);
-    // We don't need the original shaders after linking them
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glBindVertexArray(vertexArrayObject);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-void executeRenderCommands()
+void executeRenderCommands(unsigned int vertexBufferObject = NULL, unsigned int vertexArrayObject = NULL, unsigned int shaderProgram = NULL)
 {
     renderBlueGreenWindow();
-    renderTriangle();
+    renderTriangle(vertexBufferObject, vertexArrayObject, shaderProgram);
 }
 
 void processInputFromPeripherals(GLFWwindow* window)
@@ -192,12 +180,13 @@ void processInputFromPeripherals(GLFWwindow* window)
     }
 }
 
-void runRenderLoop(GLFWwindow* window)
+// not ideal to pass the VBO/VAO for clean code but we don't need to run it every loop
+void runRenderLoop(GLFWwindow* window, unsigned int vertexBufferObject = NULL, unsigned int vertexArrayObject = NULL, unsigned int shaderProgram = NULL)
 {
     while (!glfwWindowShouldClose(window))
     {
         processInputFromPeripherals(window);
-        executeRenderCommands();
+        executeRenderCommands(vertexBufferObject, vertexArrayObject, shaderProgram);
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -209,6 +198,9 @@ int closeWindow()
     return 0;
 }
 
+/*
+*  A good rule for following this tutorial is to NOT abstract out things to functions until your code is compiling.
+*/
 int main()
 {
     cout << "Hello Learn OpenGL!\n";
@@ -227,6 +219,31 @@ int main()
     }
     setDimensionsOfRenderingWindow(width, height);
     setUpAutomaticViewportAdjustment(window.window);
-    runRenderLoop(window.window);
+    unsigned int vertexShader = buildVertexShader();
+    unsigned int fragmentShader = buildFragmentShader();
+    unsigned int shaderProgram = buildShaderProgram(vertexShader, fragmentShader);
+    // We don't need the original shaders after linking them
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    
+    float triangleVertices[] =
+    {
+        -0.5f, -0.5f, 0.0f,
+         0.5f, -0.5f, 0.0f,
+         0.0f,  0.5f, 0.0f
+    };
+    // Vertex buffer objects are an efficient way of sending large amounts of vertices to the GPU.
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
+    // 3 vertices stored sequentially, tightly packed
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    runRenderLoop(window.window, VBO, VAO, shaderProgram);
     return closeWindow();
 }
